@@ -73,12 +73,41 @@ dcc.Tabs(
 `0` disables Dash's automatic full-width mobile-tab layout. Your own CSS now
 keeps the tabs in one compact row.
 
-## 2. Give the Risk controls their own layout
+## 2. Put the Risk controls in one four-column row
 
-In `rebirth/pages/risk/s16_view.py`, find the `html.Div` containing Split,
-Sort underlying by, and Options.
+The required order is:
 
-Change:
+```text
+Split | Sort underlying by | Options | Promotion controls
+```
+
+In `rebirth/pages/risk/s16_view.py`, find the `html.Div` containing the Split,
+Sort underlying by, and Options fields.
+
+First, keep only `promotion-toggle` and `region-toggle` inside
+`risk-explorer-actions`. Move `build_promotion_generation_controls(...)` out
+of that Options field.
+
+Immediately after the Options field, add it back as its own fourth field:
+
+```python
+html.Div(
+    [
+        html.Span(
+            "Promotion controls",
+            className="control-label",
+        ),
+        build_promotion_generation_controls(
+            int(initial_snapshot.revision)
+            if initial_snapshot is not None
+            else 0
+        ),
+    ],
+    className="control-field risk-promotion-field",
+),
+```
+
+Then change the outer container from:
 
 ```python
 className="controls",
@@ -90,61 +119,65 @@ to:
 className="controls risk-explorer-controls",
 ```
 
-Open:
-
-```text
-assets/s08_promotions.css
-```
-
-In `.promotion-generation-controls`, change:
+Open `assets/s08_promotions.css` and use these layout rules:
 
 ```css
-flex: 1 1 520px;
-```
+.promotion-generation-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 8px 10px;
+  min-width: 0;
+}
 
-to:
-
-```css
-flex: 1 1 100%;
-```
-
-Replace the old Risk Explorer rules:
-
-```css
-.risk-explorer-action-field { grid-column: span 2; }
-.risk-explorer-actions { flex-wrap: wrap; }
-```
-
-with:
-
-```css
 .risk-explorer-controls {
-  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  grid-template-columns:
+    minmax(0, 0.7fr)
+    minmax(0, 0.8fr)
+    minmax(0, 1.9fr)
+    minmax(0, 1.9fr);
   align-items: start;
 }
-.risk-explorer-action-field { grid-column: 1 / -1; }
+
+.risk-explorer-action-field,
+.risk-promotion-field { grid-column: auto; }
+
 .risk-explorer-actions {
-  align-items: flex-start;
+  min-height: 39px;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 10px 12px;
+  gap: 8px;
+}
+
+.promotion-generation-copy {
+  grid-column: 1 / -1;
+  min-width: 0;
+}
+
+.promotion-generation-controls .promotion-action-button {
+  width: 100%;
+  white-space: normal;
 }
 ```
 
-Finally, replace the existing bottom media rule with:
+Replace the old bottom media rule with:
 
 ```css
-@media (max-width: 760px) {
-  .risk-explorer-controls { grid-template-columns: 1fr; }
-  .risk-explorer-action-field { grid-column: 1; }
+@media (max-width: 600px) {
+  .risk-explorer-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .promotion-generation-controls { grid-template-columns: 1fr; }
+  .promotion-generation-copy { grid-column: 1; }
+}
+
+@media (max-width: 400px) {
+  .risk-explorer-controls { grid-template-columns: 1fr; }
 }
 ```
 
-The result is simple:
-
-- normal preview: Split and Sort share the first row; Options uses the full
-  second row;
-- very narrow preview: all three sections use one readable column.
+At the normal Jupyter preview width, all four fields remain in one row. Only
+genuinely small screens collapse to two columns and then one column.
 
 ## 3. Stop the Statics dropdown collapsing
 
@@ -196,7 +229,8 @@ Check these four things:
 
 1. Risk type tabs remain in one horizontal row.
 2. IR Delta, Basis, and Vega remain in one horizontal row.
-3. Split and Sort are aligned, with Options on its own row beneath them.
+3. Split, Sort, Options, and Promotion controls appear as four columns in that
+   order.
 4. Statics → Write shows the complete dropdown label and still lets the
    Add row, Save, and Cancel buttons wrap on small screens.
 
